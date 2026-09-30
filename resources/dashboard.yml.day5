@@ -1,0 +1,10 @@
+# resources/dashboard.yml — DAY 5 ONLY.
+# 1) Build + publish the dashboard in the UI, 2) export it to src/dashboards/client_dashboard.lvdash.json,
+# 3) rename this file to dashboard.yml, 4) uncomment the refresh_dashboard task in resources/jobs.yml.
+# (Kept disabled until then because the bundle fails validation if file_path does not exist.)
+resources:
+  dashboards:
+    client_dashboard:
+      display_name: "A2 bike-share operations (${var.env})"
+      file_path: ../src/dashboards/client_dashboard.lvdash.json
+      warehouse_id: ${var.warehouse_id}

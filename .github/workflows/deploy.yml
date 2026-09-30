@@ -1,0 +1,44 @@
+# .github/workflows/deploy.yml
+name: bundle-ci
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}    # PAT on Free Edition (no account-level OIDC)
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Fail if a credential slipped into the repo
+        run: |
+          if git grep -nE "dapi[0-9a-f]{32}|noaa_token\s*=\s*['\"][A-Za-z]{20,}" -- ':!*.md'; then
+            echo "Possible secret committed"; exit 1; fi
+      - run: databricks bundle validate -t dev
+      - run: databricks bundle validate -t prod
+
+  deploy-dev:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle deploy -t dev
+
+  deploy-prod:
+    if: github.event_name == 'push'
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: production      # optional: add yourself as required reviewer in GitHub Settings > Environments
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle deploy -t prod
+      - run: databricks bundle run -t prod setup_job

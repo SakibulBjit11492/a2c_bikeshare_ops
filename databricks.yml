@@ -1,0 +1,50 @@
+# databricks.yml — one bundle, two targets in the same Free Edition workspace
+bundle:
+  name: a2c_bikeshare_ops
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog (Free Edition creates one called "workspace")
+    default: workspace
+  env:
+    description: Schema prefix for this target (dev_* or prd_*)
+    default: dev
+  notify_email:
+    description: Where failure notifications go
+    default: sakibul.alam@bjitgroup.com
+  warehouse_id:
+    description: SQL warehouse for the dashboard and SQL tasks
+    lookup:
+      warehouse: "Serverless Starter Warehouse"
+  gbfs_pause:
+    description: PAUSED or UNPAUSED for the GBFS polling job
+    default: PAUSED
+
+targets:
+  dev:
+    mode: development            # [dev you] name prefix, triggers and schedules paused
+    default: true
+    workspace:
+      host: https://dbc-911a8192-2085.cloud.databricks.com   # TODO: your workspace URL
+    variables:
+      env: dev
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-911a8192-2085.cloud.databricks.com   # TODO: your workspace URL
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      env: prd
+      gbfs_pause: UNPAUSED       # Task 3.3: set to PAUSED (via a PR) after 8+ hours of snapshots
+    # Target OVERRIDE (Task 3.3 step 3): merged over the top-level job definition, prod only.
+    # A variable changes a value everywhere it is referenced; an override changes one resource's settings for one target.
+    resources:
+      jobs:
+        build_job:
+          email_notifications:
+            on_failure: ["${var.notify_email}"]
+            on_success: ["${var.notify_email}"]   # prod also tells you when a release build succeeds
