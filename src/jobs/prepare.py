@@ -56,7 +56,7 @@ for f in sorted(dbutils.fs.ls(ZIP_DIR), key=lambda f: f.name):
             with zf.open(member) as src, open(local_csv, "wb") as dst:
                 shutil.copyfileobj(src, dst, 16 * 1024 * 1024)
             expected = count_data_rows(local_csv)
-            dbutils.fs.cp(f"file:{local_csv}", f"{CSV_DIR}/{out_name}")   # overwrite-safe, deterministic name
+            shutil.copyfile(local_csv, f"{CSV_DIR}/{out_name}")   # overwrite-safe, deterministic name
             os.remove(local_csv)
             registrations.append((system, f.name, out_name, period, expected))
             print(f"{f.name} [{member}] -> {out_name}: {expected:,} rows")
