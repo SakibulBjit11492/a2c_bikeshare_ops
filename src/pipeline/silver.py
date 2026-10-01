@@ -112,10 +112,16 @@ def dim_station():
             .dropDuplicates(["station_id"]))
 
 
+# Bronze keeps the NOAA payload as delivered: Auto Loader lands JSON fields as STRING unless
+# inferColumnTypes is set, so Silver applies an explicit schema to the `results` array here.
+WEATHER_RESULTS = ("array<struct<date:string, datatype:string, station:string, "
+                   "attributes:string, value:double>>")
+
+
 @dp.materialized_view(name="silver_weather_daily", comment="One row per station and day; the latest fetch wins")
 def silver_weather_daily():
     obs = (spark.read.table("bronze_weather")
-           .select("fetched_at", F.explode("results").alias("r"))
+           .select("fetched_at", F.explode(F.from_json("results", WEATHER_RESULTS)).alias("r"))
            .select("fetched_at",
                    F.to_date(F.substring("r.date", 1, 10)).alias("obs_date"),
                    F.regexp_replace("r.station", "^GHCND:", "").alias("station_id"),
